@@ -3,6 +3,8 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import xgboost as xgb
+from sklearn.calibration import CalibratedClassifierCV
+
 
 # CSV laden
 df = pd.read_csv('C:\\Dev\\Anwendungsprojekt\\football_prediction\\data\\bundesliga_gesamt_2020_2024.csv')
@@ -228,24 +230,50 @@ y_encoded = le_result.fit_transform(y)
 # Daten aufteilen
 X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
-# Modell trainieren
-model = xgb.XGBClassifier(
+# # Modell trainieren
+# model = xgb.XGBClassifier(
+#     eval_metric='mlogloss',
+#     learning_rate=0.05,
+#     max_depth=4,
+#     n_estimators=100
+# )
+
+# model.fit(X_train, y_train)
+
+base_model = xgb.XGBClassifier(
     eval_metric='mlogloss',
     learning_rate=0.05,
     max_depth=4,
     n_estimators=100
 )
+base_model.fit(X_train, y_train)
 
-model.fit(X_train, y_train)
-
+calibrated_model = CalibratedClassifierCV(base_model, cv="prefit", method='isotonic')
+calibrated_model.fit(X_train, y_train)
 # Vorhersage und Bewertung
-y_pred = model.predict(X_test)
+y_pred = calibrated_model.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
+print(f"Genauigkeit (kalibriertes Modell): {accuracy:.2%}")
+
+# Wahrscheinlichkeiten & Brier-Score
+y_proba = calibrated_model.predict_proba(X_test)
+from sklearn.metrics import brier_score_loss
+import numpy as np
+from sklearn.preprocessing import label_binarize
+
+# Klassen binarisieren
+n_classes = len(le_result.classes_)
+y_test_binarized = label_binarize(y_test, classes=list(range(n_classes)))
+
+# Multiclass Brier Score (durchschnittlich über alle Klassen)
+brier = np.mean(np.sum((y_proba - y_test_binarized) ** 2, axis=1))
+print(f"Brier Score (multiclass): {brier:.4f}")
+
 print(f"Genauigkeit des verbesserten Modells: {accuracy:.2%}")
 
 from sklearn.model_selection import cross_val_score
 
-scores = cross_val_score(model, X, y_encoded, cv=5, scoring='accuracy')
+scores = cross_val_score(base_model, X, y_encoded, cv=5, scoring='accuracy')
 print(f"Durchschnittliche Genauigkeit (Cross-Validation, 5-fach): {scores.mean():.2%}")
 print(f"Genauigkeit pro Fold: {scores}")
 print(f"Spannweite: {scores.min():.2%} – {scores.max():.2%}")
@@ -280,6 +308,6 @@ print(f"Standardabweichung: {scores.std():.2%}")
 
 
 import matplotlib.pyplot as plt
-xgb.plot_importance(model, max_num_features=10)
+xgb.plot_importance(base_model, max_num_features=10)
 plt.tight_layout()
 plt.show()
