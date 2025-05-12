@@ -32,6 +32,18 @@ df['season'] = df.apply(get_season, axis=1)
 
 # Spiele chronologisch sortieren
 df = df.sort_values(by='date').reset_index(drop=True)
+def expected_score(rating_a, rating_b):
+    return 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
+
+def update_elo(rating_a, rating_b, result, k=20):
+    expected_a = expected_score(rating_a, rating_b)
+    new_rating_a = rating_a + k * (result - expected_a)
+    new_rating_b = rating_b + k * ((1 - result) - (1 - expected_a))
+    return new_rating_a, new_rating_b
+
+df['elo_home'] = 1500.0
+df['elo_away'] = 1500.0
+df['elo_diff'] = 0.0
 
 # Tabellenplatz-Features initialisieren
 df['home_position'] = 0
@@ -40,6 +52,9 @@ df['average_home_goals'] = 0.0
 df['average_away_goals'] = 0.0
 df['home_win_rate'] = 0.0
 df['away_win_rate'] = 0.0
+
+elo_ratings = {}
+
 
 for idx, match in df.iterrows():
     saison = match['season']
@@ -110,6 +125,36 @@ for idx, match in df.iterrows():
             df.at[idx, 'average_away_goals'] = 1.0
             df.at[idx, 'away_win_rate'] = 0.3
 
+    # --- NEU: Elo-Rating ---
+    elo_home = elo_ratings.get(heim, 1500)
+    elo_away = elo_ratings.get(auswaerts, 1500)
+
+    if match['home_goals'] > match['away_goals']:
+        result = 1
+    elif match['home_goals'] == match['away_goals']:
+        result = 0.5
+    else:
+        result = 0
+
+    new_elo_home, new_elo_away = update_elo(elo_home, elo_away, result)
+
+    df.at[idx, 'elo_home'] = elo_home
+    df.at[idx, 'elo_away'] = elo_away
+    df.at[idx, 'elo_diff'] = elo_home - elo_away
+
+    elo_ratings[heim] = new_elo_home
+    elo_ratings[auswaerts] = new_elo_away
+
+def expected_score(rating_a, rating_b):
+    return 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
+
+def update_elo(rating_a, rating_b, result, k=20):
+    expected_a = expected_score(rating_a, rating_b)
+    new_rating_a = rating_a + k * (result - expected_a)
+    new_rating_b = rating_b + k * ((1 - result) - (1 - expected_a))
+    return new_rating_a, new_rating_b
+
+
 # Zusätzliche Form-Features
 
 df['home_points'] = df['result'].map({'home_win': 3, 'draw': 1, 'away_win': 0})
@@ -168,7 +213,9 @@ X = df[[
     'home_form_points', 'away_form_points',
     'home_form_goaldiff', 'away_form_goaldiff',
     'form_diff', 'goal_avg_diff',  
-    'form_curve_diff'              
+    'form_curve_diff',
+    'elo_home', 'elo_away', 'elo_diff',
+            
 ]]
 
 
@@ -232,7 +279,7 @@ print(f"Standardabweichung: {scores.std():.2%}")
 # print(f"Beste Genauigkeit: {grid_search.best_score_:.2%}")
 
 
-# import matplotlib.pyplot as plt
-# xgb.plot_importance(model, max_num_features=10)
-# plt.tight_layout()
-# plt.show()
+import matplotlib.pyplot as plt
+xgb.plot_importance(model, max_num_features=10)
+plt.tight_layout()
+plt.show()
