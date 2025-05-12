@@ -127,6 +127,14 @@ df['away_form_goaldiff'] = df.groupby('away_team')['away_goal_diff'].transform(l
 df['home_form_curve'] = df.groupby('home_team')['home_points'].transform(lambda x: x.shift().rolling(5, min_periods=1).sum())
 df['away_form_curve'] = df.groupby('away_team')['away_points'].transform(lambda x: x.shift().rolling(5, min_periods=1).sum())
 
+# ➕ Neues Feature: Formdifferenz (z. B. Tordifferenzform Heim - Auswärts)
+df['form_diff'] = df['home_form_goaldiff'] - df['away_form_goaldiff']
+
+df['goal_avg_diff'] = df['average_home_goals'] - df['average_away_goals']
+
+df['form_curve_diff'] = df['home_form_curve'] - df['away_form_curve']
+
+
 form_features = [
     'home_form_points', 'away_form_points',
     'home_form_goaldiff', 'away_form_goaldiff',
@@ -152,16 +160,18 @@ le_away = LabelEncoder()
 df['home_team_encoded'] = le_home.fit_transform(df['home_team'])
 df['away_team_encoded'] = le_away.fit_transform(df['away_team'])
 
-# Features und Zielvariable definieren
-X = df[[
+X = df[[ 
     'home_team_encoded', 'away_team_encoded',
     'home_position', 'away_position',
     'average_home_goals', 'average_away_goals',
     'home_win_rate', 'away_win_rate',
     'home_form_points', 'away_form_points',
     'home_form_goaldiff', 'away_form_goaldiff',
-    'home_form_curve', 'away_form_curve'
+    'form_diff', 'goal_avg_diff',  
+    'form_curve_diff'              
 ]]
+
+
 y = df['result']
 
 # Zielvariable kodieren
@@ -172,7 +182,13 @@ y_encoded = le_result.fit_transform(y)
 X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
 # Modell trainieren
-model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+model = xgb.XGBClassifier(
+    eval_metric='mlogloss',
+    learning_rate=0.05,
+    max_depth=4,
+    n_estimators=100
+)
+
 model.fit(X_train, y_train)
 
 # Vorhersage und Bewertung
@@ -187,3 +203,36 @@ print(f"Durchschnittliche Genauigkeit (Cross-Validation, 5-fach): {scores.mean()
 print(f"Genauigkeit pro Fold: {scores}")
 print(f"Spannweite: {scores.min():.2%} – {scores.max():.2%}")
 print(f"Standardabweichung: {scores.std():.2%}")
+
+
+# from sklearn.model_selection import GridSearchCV
+# import xgboost as xgb
+
+# # 🔧 Parameterkombinationen (6 Stück insgesamt)
+# param_grid = {
+#     'max_depth': [3, 4],
+#     'learning_rate': [0.05, 0.1],
+#     'n_estimators': [100, 200]
+# }
+
+# # 🚀 GridSearch starten
+# grid_search = GridSearchCV(
+#     estimator=xgb.XGBClassifier(use_label_encoder=False, eval_metric='mlogloss'),
+#     param_grid=param_grid,
+#     scoring='accuracy',
+#     cv=3,  # Cross-Validation auf 3 Teile reduziert für Geschwindigkeit
+#     verbose=1,
+#     n_jobs=-1  # nutzt alle verfügbaren CPU-Kerne
+# )
+
+# grid_search.fit(X, y_encoded)
+
+# print("\n✅ Beste Parameterkombination:")
+# print(grid_search.best_params_)
+# print(f"Beste Genauigkeit: {grid_search.best_score_:.2%}")
+
+
+# import matplotlib.pyplot as plt
+# xgb.plot_importance(model, max_num_features=10)
+# plt.tight_layout()
+# plt.show()
