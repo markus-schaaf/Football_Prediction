@@ -283,14 +283,12 @@ print(f"Standardabweichung: {scores.std():.2%}")
 # from sklearn.model_selection import GridSearchCV
 # import xgboost as xgb
 
-# # 🔧 Parameterkombinationen (6 Stück insgesamt)
 # param_grid = {
 #     'max_depth': [3, 4],
 #     'learning_rate': [0.05, 0.1],
 #     'n_estimators': [100, 200]
 # }
 
-# # 🚀 GridSearch starten
 # grid_search = GridSearchCV(
 #     estimator=xgb.XGBClassifier(use_label_encoder=False, eval_metric='mlogloss'),
 #     param_grid=param_grid,
@@ -302,7 +300,7 @@ print(f"Standardabweichung: {scores.std():.2%}")
 
 # grid_search.fit(X, y_encoded)
 
-# print("\n✅ Beste Parameterkombination:")
+# print("\nBeste Parameterkombination:")
 # print(grid_search.best_params_)
 # print(f"Beste Genauigkeit: {grid_search.best_score_:.2%}")
 
