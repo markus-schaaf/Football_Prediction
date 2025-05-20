@@ -1,1 +1,100 @@
-<h1>Football</h1>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Modellübersicht – Bundesliga-Vorhersage</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 2rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #fff;
+            color: #000;
+            line-height: 1.6;
+        }
+
+        h1, h2 {
+            font-weight: 600;
+            margin-top: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        ul, li {
+            padding: 0;
+            margin: 0.5rem 0 0.5rem 1.5rem;
+        }
+
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .highlight {
+            background-color: #f9f9f9;
+            padding: 1rem;
+            border-left: 4px solid #007aff;
+            margin: 1rem 0;
+        }
+
+        footer {
+            margin-top: 3rem;
+            font-size: 0.8rem;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Überblick: Bundesliga-Vorhersagemodell</h1>
+
+        <p>Diese Seite gibt einen technischen Überblick über das verwendete Machine Learning-Modell zur Vorhersage von Bundesliga-Ergebnissen.</p>
+
+        <h2>⚙️ Modelltyp</h2>
+        <p>Das Modell basiert auf <strong>XGBoost (Gradient Boosted Trees)</strong> und wurde zusätzlich <strong>kalibriert</strong>, um verlässlichere Wahrscheinlichkeiten zu liefern.</p>
+
+        <h2>📊 Genutzte Features</h2>
+        <ul>
+            <li><code>home_team_encoded</code>, <code>away_team_encoded</code>: Teamnamen als numerische Labels</li>
+            <li><code>home_position</code>, <code>away_position</code>: Tabellenplatz vor dem Spiel</li>
+            <li><code>average_home_goals</code>, <code>average_away_goals</code>: Durchschnittstore bisher</li>
+            <li><code>home_win_rate</code>, <code>away_win_rate</code>: Siegquote bisher</li>
+            <li><code>home_form_points</code>, <code>away_form_points</code>: Punkteschnitt der letzten 3 Spiele</li>
+            <li><code>home_form_goaldiff</code>, <code>away_form_goaldiff</code>: Tordifferenz der letzten Spiele</li>
+            <li><code>form_diff</code>: Differenz der Form-Tordifferenz (Heim – Auswärts)</li>
+            <li><code>goal_avg_diff</code>: Unterschied im Torschnitt (Heim – Auswärts)</li>
+            <li><code>form_curve_diff</code>: Punktesumme der letzten 5 Spiele (Heim – Auswärts)</li>
+            <li><code>elo_home</code>, <code>elo_away</code>, <code>elo_diff</code>: ELO-Ratings zur Teamstärke</li>
+        </ul>
+
+        <h2>🔧 Modellparameter</h2>
+        <ul>
+            <li><code>learning_rate = 0.05</code></li>
+            <li><code>max_depth = 4</code></li>
+            <li><code>n_estimators = 100</code></li>
+            <li><code>eval_metric = "mlogloss"</code></li>
+        </ul>
+
+        <h2>🎯 Modellbewertung</h2>
+        <div class="highlight">
+            <strong>Testgenauigkeit:</strong> ~45.71%<br>
+            <strong>Cross-Validation (5-fach):</strong> ~45.67%<br>
+            <strong>Brier Score:</strong> ~0.8095<br>
+            <strong>Standardabweichung:</strong> 3.43%
+        </div>
+
+        <h2>🧠 Kalibrierung</h2>
+        <p>Das Modell wurde mit <code>CalibratedClassifierCV</code> (isotonic) kalibriert, um Wahrscheinlichkeiten korrekt zu gewichten.</p>
+
+        <footer>
+            &copy; 2025 Bundesliga-Predictor – Projektarbeit Universität
+        </footer>
+    </div>
+</body>
+</html>

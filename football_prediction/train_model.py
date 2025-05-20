@@ -309,3 +309,9 @@ import matplotlib.pyplot as plt
 xgb.plot_importance(base_model, max_num_features=10)
 plt.tight_layout()
 plt.show()
+
+import joblib
+joblib.dump(calibrated_model, 'football_prediction/model/xgb_calibrated_model.pkl')
+joblib.dump(le_home, 'football_prediction/model/le_home.pkl')
+joblib.dump(le_away, 'football_prediction/model/le_away.pkl')
+joblib.dump(le_result, 'football_prediction/model/le_result.pkl')
