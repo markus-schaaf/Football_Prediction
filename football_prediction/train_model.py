@@ -7,7 +7,7 @@ from sklearn.calibration import CalibratedClassifierCV
 
 
 # CSV laden
-df = pd.read_csv('C:\\Dev\\Anwendungsprojekt\\football_prediction\\data\\bundesliga_gesamt_2020_2024.csv')
+df = pd.read_csv('C:\\Dev\\Anwendungsprojekt_clean\\football_prediction\\data\\bundesliga_gesamt_2020_2024.csv')
 df['date'] = pd.to_datetime(df['date'])
 
 # Zielvariable erstellen
@@ -305,13 +305,39 @@ print(f"Standardabweichung: {scores.std():.2%}")
 # print(f"Beste Genauigkeit: {grid_search.best_score_:.2%}")
 
 
-import matplotlib.pyplot as plt
-xgb.plot_importance(base_model, max_num_features=10)
-plt.tight_layout()
-plt.show()
+# import matplotlib.pyplot as plt
+# xgb.plot_importance(base_model, max_num_features=10)
+# plt.tight_layout()
+# plt.show()
+
+import json
+import os
+
+# Feature Importance berechnen und sortieren
+booster = base_model.get_booster()
+importance_dict = booster.get_score(importance_type='weight')
+sorted_items = sorted(importance_dict.items(), key=lambda x: x[1], reverse=True)
+
+# Export für Plotly
+feature_names = [k for k, v in sorted_items]
+importances = [v for k, v in sorted_items]
+
+feature_json = {
+    'features': feature_names,
+    'importances': importances
+}
+
+# Stelle sicher, dass der Pfad existiert
+os.makedirs('football_prediction/static/model', exist_ok=True)
+
+# Speichern der JSON-Datei
+with open('football_prediction/static/model/feature_importance.json', 'w') as f:
+    json.dump(feature_json, f)
+
 
 import joblib
 joblib.dump(calibrated_model, 'football_prediction/model/xgb_calibrated_model.pkl')
 joblib.dump(le_home, 'football_prediction/model/le_home.pkl')
 joblib.dump(le_away, 'football_prediction/model/le_away.pkl')
 joblib.dump(le_result, 'football_prediction/model/le_result.pkl')
+

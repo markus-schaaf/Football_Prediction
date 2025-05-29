@@ -13,13 +13,13 @@
             line-height: 1.6;
         }
 
-        h1, h2 {
+        h1, h2, h3 {
             font-weight: 600;
             margin-top: 2rem;
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -49,51 +49,119 @@
             text-align: center;
         }
     </style>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Überblick: Bundesliga-Vorhersagemodell</h1>
+        <h1>Modellübersicht: Bundesliga-Vorhersage mit XGBoost</h1>
 
-        <p>Diese Seite gibt einen technischen Überblick über das verwendete Machine Learning-Modell zur Vorhersage von Bundesliga-Ergebnissen.</p>
+        <p>Dieses Projekt beschreibt ein Vorhersagemodell für Bundesliga-Ergebnisse mithilfe von <strong>XGBoost</strong>, erweitert durch <strong>Feature Engineering</strong> und <strong>Kalibrierung</strong>.</p>
 
-        <h2>⚙️ Modelltyp</h2>
-        <p>Das Modell basiert auf <strong>XGBoost (Gradient Boosted Trees)</strong> und wurde zusätzlich <strong>kalibriert</strong>, um verlässlichere Wahrscheinlichkeiten zu liefern.</p>
+        <h2>1. Lernstrategie</h2>
+        <p>Das Modell lernt auf Basis historischer Spielstatistiken. Dabei werden sowohl Team-basierte als auch spieltagbezogene Merkmale genutzt. Ziel ist die Klassifikation in die Kategorien <code>home_win</code>, <code>draw</code> und <code>away_win</code>.</p>
 
-        <h2>📊 Genutzte Features</h2>
+        <h3>Trainingspipeline</h3>
         <ul>
-            <li><code>home_team_encoded</code>, <code>away_team_encoded</code>: Teamnamen als numerische Labels</li>
-            <li><code>home_position</code>, <code>away_position</code>: Tabellenplatz vor dem Spiel</li>
-            <li><code>average_home_goals</code>, <code>average_away_goals</code>: Durchschnittstore bisher</li>
-            <li><code>home_win_rate</code>, <code>away_win_rate</code>: Siegquote bisher</li>
-            <li><code>home_form_points</code>, <code>away_form_points</code>: Punkteschnitt der letzten 3 Spiele</li>
-            <li><code>home_form_goaldiff</code>, <code>away_form_goaldiff</code>: Tordifferenz der letzten Spiele</li>
-            <li><code>form_diff</code>: Differenz der Form-Tordifferenz (Heim – Auswärts)</li>
-            <li><code>goal_avg_diff</code>: Unterschied im Torschnitt (Heim – Auswärts)</li>
-            <li><code>form_curve_diff</code>: Punktesumme der letzten 5 Spiele (Heim – Auswärts)</li>
-            <li><code>elo_home</code>, <code>elo_away</code>, <code>elo_diff</code>: ELO-Ratings zur Teamstärke</li>
+            <li>Daten laden & bereinigen</li>
+            <li>Feature Engineering (z. B. Formkurven, Elo-Ratings)</li>
+            <li>Label-Encoding & Datenaufteilung</li>
+            <li>Training mit <code>XGBClassifier</code> & Kalibrierung</li>
         </ul>
 
-        <h2>🔧 Modellparameter</h2>
+        <h2>2. Wichtigste Features</h2>
+        <p>Nach der Analyse der Feature-Importanz zeigen sich die folgenden Merkmale als besonders einflussreich:</p>
         <ul>
-            <li><code>learning_rate = 0.05</code></li>
-            <li><code>max_depth = 4</code></li>
-            <li><code>n_estimators = 100</code></li>
-            <li><code>eval_metric = "mlogloss"</code></li>
+            <li><code>elo_diff</code>: Differenz der Elo-Bewertungen</li>
+            <li><code>form_curve_diff</code>: Formkurve der letzten 5 Spiele (Punkte)</li>
+            <li><code>home_win_rate</code>, <code>away_win_rate</code>: Bisherige Siegquoten</li>
+            <li><code>average_home_goals</code>, <code>average_away_goals</code>: Tordurchschnitt</li>
         </ul>
 
-        <h2>🎯 Modellbewertung</h2>
         <div class="highlight">
-            <strong>Testgenauigkeit:</strong> ~45.71%<br>
-            <strong>Cross-Validation (5-fach):</strong> ~45.67%<br>
-            <strong>Brier Score:</strong> ~0.8095<br>
-            <strong>Standardabweichung:</strong> 3.43%
+            Hinweis: Die Gewichtung basiert auf dem Feature-Importanzdiagramm von XGBoost.
         </div>
 
-        <h2>🧠 Kalibrierung</h2>
-        <p>Das Modell wurde mit <code>CalibratedClassifierCV</code> (isotonic) kalibriert, um Wahrscheinlichkeiten korrekt zu gewichten.</p>
+        <h3>Interaktive Feature-Importanz</h3>
+        <div id="feature-importance-chart" style="height: 500px;"></div>
+        <script>
+            fetch('/static/model/feature_importance.json')
+                .then(response => response.json())
+                .then(data => {
+                    const features = data.features;
+                    const rawValues = data.importances.map(Number);
+                    const total = rawValues.reduce((a, b) => a + b, 0);
+                    const normValues = rawValues.map(x => x / total);
+
+                    const plotData = [{
+                        x: normValues.slice().reverse(),
+                        y: features.slice().reverse(),
+                        type: 'bar',
+                        orientation: 'h',
+                        text: normValues.map(x => `${(x * 100).toFixed(1)}%`).reverse(),
+                        textposition: 'auto',
+                        marker: {
+                            color: 'rgba(0, 50, 120, 0.85)'
+                        },
+                        name: 'Feature-Gewichtung'
+                    }];
+
+                    const layout = {
+                        margin: { l: 180, r: 30, t: 30, b: 50 },
+                        xaxis: {
+                            title: 'Feature-Gewichtung (relativ)',
+                            range: [0, Math.max(...normValues) + 0.05]
+                        },
+                        yaxis: {
+                            title: 'Feature'
+                        },
+                        showlegend: true,
+                        legend: {
+                            x: 0.8,
+                            y: 1.1
+                        }
+                    };
+
+                    Plotly.newPlot('feature-importance-chart', plotData, layout, { responsive: true });
+                });
+        </script>
+
+        <div class="highlight">
+            <strong>Legende:</strong><br>
+            Die Balken zeigen die relative Bedeutung der einzelnen Merkmale bei der Vorhersage.<br>
+            <ul>
+                <li><strong>Prozent (z. B. 19.5 %):</strong> Anteil in Prozent bezogen auf die Summe aller Feature-Werte</li>
+            </ul>
+        </div>
+
+        <h2>3. Hyperparameter</h2>
+        <ul>
+            <li><strong>learning_rate:</strong> 0.05</li>
+            <li><strong>max_depth:</strong> 4</li>
+            <li><strong>n_estimators:</strong> 100</li>
+            <li><strong>eval_metric:</strong> "mlogloss"</li>
+        </ul>
+        <p>Diese Parameter wurden manuell sowie mithilfe von <code>GridSearchCV</code> feinjustiert.</p>
+
+        <h2>4. Modellbewertung</h2>
+        <p>Zur Evaluation wurden Accuracy, Brier Score und Kreuzvalidierung genutzt:</p>
+        <ul>
+            <li><strong>Testgenauigkeit:</strong> 45.71%</li>
+            <li><strong>Brier Score:</strong> 0.8095</li>
+            <li><strong>5-fach Cross-Validation:</strong> 45.67% (Std: 3.43%)</li>
+        </ul>
+
+        <h2>5. Kalibrierung</h2>
+        <p>Um Wahrscheinlichkeiten korrekt zu interpretieren, wurde <code>CalibratedClassifierCV</code> mit der Methode <code>isotonic</code> verwendet. Dies verbessert die Aussagekraft der Wahrscheinlichkeiten im Multi-Class-Setting.</p>
+
+        <h2>6. Erweiterungsideen</h2>
+        <ul>
+            <li>Integration von Wetter- oder Spielerstatistiken</li>
+            <li>Zeitreihenanalyse für Formkurven</li>
+            <li>Ensemble mit Random Forest für Modellvergleich</li>
+        </ul>
 
         <footer>
-            &copy; 2025 Bundesliga-Predictor – Projektarbeit Universität
+            &copy; 2025 Bundesliga-Predictor – Projektarbeit Universität. Alle Inhalte zu wissenschaftlichen Zwecken.
         </footer>
     </div>
 </body>
