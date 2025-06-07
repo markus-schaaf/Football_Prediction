@@ -7,6 +7,7 @@ from sklearn.calibration import CalibratedClassifierCV
 import django
 import os
 import sys
+import joblib
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -338,17 +339,23 @@ feature_json = {
     'importances': importances
 }
 
-# Stelle sicher, dass der Pfad existiert
-os.makedirs('football_prediction/static/model', exist_ok=True)
-
-# Speichern der JSON-Datei
-with open('football_prediction/static/model/feature_importance.json', 'w') as f:
-    json.dump(feature_json, f)
 
 
-import joblib
-joblib.dump(calibrated_model, 'football_prediction/model/xgb_calibrated_model.pkl')
-joblib.dump(le_home, 'football_prediction/model/le_home.pkl')
-joblib.dump(le_away, 'football_prediction/model/le_away.pkl')
-joblib.dump(le_result, 'football_prediction/model/le_result.pkl')
+model_dir = os.path.join("football_prediction", "model")
+static_dir = os.path.join("football_prediction", "static", "model")
+os.makedirs(model_dir, exist_ok=True)
+os.makedirs(static_dir, exist_ok=True)
 
+joblib.dump(calibrated_model, os.path.join(model_dir, "xgb_model.joblib"))
+joblib.dump(le_home, os.path.join(model_dir, "le_home.joblib"))
+joblib.dump(le_away, os.path.join(model_dir, "le_away.joblib"))
+joblib.dump(le_result, os.path.join(model_dir, "le_result.joblib"))
+
+base_model = calibrated_model.estimator
+importance_dict = {
+    feature: float(importance)
+    for feature, importance in zip(X.columns, calibrated_model.estimator.feature_importances_)
+}
+
+with open(os.path.join(static_dir, "xgb_feature_importance.json"), "w") as f:
+    json.dump(importance_dict, f)

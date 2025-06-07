@@ -1,168 +1,62 @@
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Modellübersicht – Bundesliga-Vorhersage</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 2rem;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #fff;
-            color: #000;
-            line-height: 1.6;
-        }
-
-        h1, h2, h3 {
-            font-weight: 600;
-            margin-top: 2rem;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        ul, li {
-            padding: 0;
-            margin: 0.5rem 0 0.5rem 1.5rem;
-        }
-
-        code {
-            background-color: #f4f4f4;
-            padding: 2px 5px;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-
-        .highlight {
-            background-color: #f9f9f9;
-            padding: 1rem;
-            border-left: 4px solid #007aff;
-            margin: 1rem 0;
-        }
-
-        footer {
-            margin-top: 3rem;
-            font-size: 0.8rem;
-            color: #666;
-            text-align: center;
-        }
-    </style>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <title>Teamvergleich</title>
 </head>
 <body>
-    <div class="container">
-        <h1>Modellübersicht: Bundesliga-Vorhersage mit XGBoost</h1>
+    <h1>Wähle zwei Teams zum Vergleich</h1>
+    <form method="post">
+        {% csrf_token %}
+        <label for="team1">Heimteam:</label>
+        <select name="team1" id="team1">
+            {% for team in teams %}
+                <option value="{{ team }}">{{ team }}</option>
+            {% endfor %}
+        </select>
 
-        <p>Dieses Projekt beschreibt ein Vorhersagemodell für Bundesliga-Ergebnisse mithilfe von <strong>XGBoost</strong>, erweitert durch <strong>Feature Engineering</strong> und <strong>Kalibrierung</strong>.</p>
+        <label for="team2">Auswärtsteam:</label>
+        <select name="team2" id="team2">
+            {% for team in teams %}
+                <option value="{{ team }}">{{ team }}</option>
+            {% endfor %}
+        </select>
 
-        <h2>1. Lernstrategie</h2>
-        <p>Das Modell lernt auf Basis historischer Spielstatistiken. Dabei werden sowohl Team-basierte als auch spieltagbezogene Merkmale genutzt. Ziel ist die Klassifikation in die Kategorien <code>home_win</code>, <code>draw</code> und <code>away_win</code>.</p>
+        <button type="submit">Vergleichen</button>
+    </form>
 
-        <h3>Trainingspipeline</h3>
+    {% if prediction_result %}
+        <h2>Vorhersage-Ergebnis:</h2>
+        <h3>{{ prediction_result.team1 }} vs. {{ prediction_result.team2 }}</h3>
+
+        <h4>🎯 Random Forest</h4>
         <ul>
-            <li>Daten laden & bereinigen</li>
-            <li>Feature Engineering (z. B. Formkurven, Elo-Ratings)</li>
-            <li>Label-Encoding & Datenaufteilung</li>
-            <li>Training mit <code>XGBClassifier</code> & Kalibrierung</li>
+            <li>🏠 Heimsieg: {{ prediction_result.rf.home_win }}</li>
+            <li>➖ Unentschieden: {{ prediction_result.rf.draw }}</li>
+            <li>🚗 Auswärtssieg: {{ prediction_result.rf.away_win }}</li>
         </ul>
 
-        <h2>2. Wichtigste Features</h2>
-        <p>Nach der Analyse der Feature-Importanz zeigen sich die folgenden Merkmale als besonders einflussreich:</p>
+        <h4>🚀 XGBoost</h4>
         <ul>
-            <li><code>elo_diff</code>: Differenz der Elo-Bewertungen</li>
-            <li><code>form_curve_diff</code>: Formkurve der letzten 5 Spiele (Punkte)</li>
-            <li><code>home_win_rate</code>, <code>away_win_rate</code>: Bisherige Siegquoten</li>
-            <li><code>average_home_goals</code>, <code>average_away_goals</code>: Tordurchschnitt</li>
+            <li>🏠 Heimsieg: {{ prediction_result.xgb.home_win }}</li>
+            <li>➖ Unentschieden: {{ prediction_result.xgb.draw }}</li>
+            <li>🚗 Auswärtssieg: {{ prediction_result.xgb.away_win }}</li>
         </ul>
+    {% endif %}
 
-        <div class="highlight">
-            Hinweis: Die Gewichtung basiert auf dem Feature-Importanzdiagramm von XGBoost.
-        </div>
+    <script>
+        const team1Select = document.getElementById('team1');
+        const team2Select = document.getElementById('team2');
 
-        <h3>Interaktive Feature-Importanz</h3>
-        <div id="feature-importance-chart" style="height: 500px;"></div>
-        <script>
-            fetch('/static/model/feature_importance.json')
-                .then(response => response.json())
-                .then(data => {
-                    const features = data.features;
-                    const rawValues = data.importances.map(Number);
-                    const total = rawValues.reduce((a, b) => a + b, 0);
-                    const normValues = rawValues.map(x => x / total);
+        function checkSameTeam() {
+            if (team1Select.value === team2Select.value) {
+                team2Select.setCustomValidity("Bitte wähle zwei verschiedene Teams.");
+            } else {
+                team2Select.setCustomValidity("");
+            }
+        }
 
-                    const plotData = [{
-                        x: normValues.slice().reverse(),
-                        y: features.slice().reverse(),
-                        type: 'bar',
-                        orientation: 'h',
-                        text: normValues.map(x => `${(x * 100).toFixed(1)}%`).reverse(),
-                        textposition: 'auto',
-                        marker: {
-                            color: 'rgba(0, 50, 120, 0.85)'
-                        },
-                        name: 'Feature-Gewichtung'
-                    }];
-
-                    const layout = {
-                        margin: { l: 180, r: 30, t: 30, b: 50 },
-                        xaxis: {
-                            title: 'Feature-Gewichtung (relativ)',
-                            range: [0, Math.max(...normValues) + 0.05]
-                        },
-                        yaxis: {
-                            title: 'Feature'
-                        },
-                        showlegend: true,
-                        legend: {
-                            x: 0.8,
-                            y: 1.1
-                        }
-                    };
-
-                    Plotly.newPlot('feature-importance-chart', plotData, layout, { responsive: true });
-                });
-        </script>
-
-        <div class="highlight">
-            <strong>Legende:</strong><br>
-            Die Balken zeigen die relative Bedeutung der einzelnen Merkmale bei der Vorhersage.<br>
-            <ul>
-                <li><strong>Prozent (z. B. 19.5 %):</strong> Anteil in Prozent bezogen auf die Summe aller Feature-Werte</li>
-            </ul>
-        </div>
-
-        <h2>3. Hyperparameter</h2>
-        <ul>
-            <li><strong>learning_rate:</strong> 0.05</li>
-            <li><strong>max_depth:</strong> 4</li>
-            <li><strong>n_estimators:</strong> 100</li>
-            <li><strong>eval_metric:</strong> "mlogloss"</li>
-        </ul>
-        <p>Diese Parameter wurden manuell sowie mithilfe von <code>GridSearchCV</code> feinjustiert.</p>
-
-        <h2>4. Modellbewertung</h2>
-        <p>Zur Evaluation wurden Accuracy, Brier Score und Kreuzvalidierung genutzt:</p>
-        <ul>
-            <li><strong>Testgenauigkeit:</strong> 45.71%</li>
-            <li><strong>Brier Score:</strong> 0.8095</li>
-            <li><strong>5-fach Cross-Validation:</strong> 45.67% (Std: 3.43%)</li>
-        </ul>
-
-        <h2>5. Kalibrierung</h2>
-        <p>Um Wahrscheinlichkeiten korrekt zu interpretieren, wurde <code>CalibratedClassifierCV</code> mit der Methode <code>isotonic</code> verwendet. Dies verbessert die Aussagekraft der Wahrscheinlichkeiten im Multi-Class-Setting.</p>
-
-        <h2>6. Erweiterungsideen</h2>
-        <ul>
-            <li>Integration von Wetter- oder Spielerstatistiken</li>
-            <li>Zeitreihenanalyse für Formkurven</li>
-            <li>Ensemble mit Random Forest für Modellvergleich</li>
-        </ul>
-
-        <footer>
-            &copy; 2025 Bundesliga-Predictor – Projektarbeit Universität. Alle Inhalte zu wissenschaftlichen Zwecken.
-        </footer>
-    </div>
+        team1Select.addEventListener('change', checkSameTeam);
+        team2Select.addEventListener('change', checkSameTeam);
+    </script>
 </body>
 </html>

@@ -11,6 +11,8 @@ class Match(models.Model):
     scorers = models.TextField()
     season = models.CharField(max_length=20)
     result = models.CharField(max_length=20)
+    elo_home = models.FloatField(null=True, blank=True)
+    elo_away = models.FloatField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.date.date()} {self.home_team} vs {self.away_team}"

@@ -205,6 +205,15 @@ X = df[[
     'elo_home', 'elo_away', 'elo_diff',
 ]]
 
+model_dir = os.path.join("football_prediction", "model")
+static_dir = os.path.join("football_prediction", "static", "model")
+os.makedirs(model_dir, exist_ok=True)
+os.makedirs(static_dir, exist_ok=True)
+
+# X.columns speichern
+with open(os.path.join(model_dir, "feature_columns.json"), "w") as f:
+    json.dump(list(X.columns), f)
+
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -229,14 +238,11 @@ print(f"Spannweite: {scores.min():.2%} – {scores.max():.2%}")
 print(f"Standardabweichung: {scores.std():.2%}")
 
 
-joblib.dump(calibrated_rf, 'football_prediction/model/rf_calibrated_model.pkl')
-joblib.dump(le_home, 'football_prediction/model/le_home.pkl')
-joblib.dump(le_away, 'football_prediction/model/le_away.pkl')
-joblib.dump(le_result, 'football_prediction/model/le_result.pkl')
-
+joblib.dump(calibrated_rf, os.path.join(model_dir, "random_forest_model.joblib"))
+joblib.dump(le_home, os.path.join(model_dir, "le_home.joblib"))
+joblib.dump(le_away, os.path.join(model_dir, "le_away.joblib"))
+joblib.dump(le_result, os.path.join(model_dir, "le_result.joblib"))
 
 importance_dict = dict(zip(X.columns, rf.feature_importances_))
-os.makedirs('football_prediction/static/model', exist_ok=True)
-
-with open('football_prediction/static/model/rf_feature_importance.json', 'w') as f:
+with open(os.path.join(static_dir, "rf_feature_importance.json"), "w") as f:
     json.dump(importance_dict, f)

@@ -16,9 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from football_prediction.views import football_prediction
+from football_prediction.views import team_selection_view
+from django.urls import path
+from football_prediction import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('prediction/',football_prediction),
+    path('', views.football_prediction, name='home'),
+    path('overview/', views.model_overview, name='overview'),
+    path('prediction/', views.team_selection_view, name='team_selection'),  # ← Name ergänzt
 ]
