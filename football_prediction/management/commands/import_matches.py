@@ -24,19 +24,21 @@ class Command(BaseCommand):
             aware_date = row['date'].replace(tzinfo=tz)
 
             match, created = Match.objects.update_or_create(
-                match_id=row['match_id'],
-                defaults={
-                    'date': aware_date,
-                    'matchday': row['matchday'],
-                    'home_team': row['home_team'],
-                    'away_team': row['away_team'],
-                    'home_goals': row['home_goals'],
-                    'away_goals': row['away_goals'],
-                    'scorers': row['scorers'],
-                    'season': row['season'],
-                    'result': row['result'],
-                }
-            )
+            match_id=row['match_id'],
+            defaults={
+                'date': aware_date,
+                'matchday': row['matchday'],
+                'home_team': row['home_team'],
+                'away_team': row['away_team'],
+                'home_goals': row['home_goals'],
+                'away_goals': row['away_goals'],
+                'scorers': row['scorers'],
+                'season': row['season'],
+                'result': row['result'],
+                'elo_home': row.get('elo_home', None),  # 👈 hinzugefügt
+                'elo_away': row.get('elo_away', None),  # 👈 hinzugefügt
+            }
+        )
             if created:
                 count += 1
 

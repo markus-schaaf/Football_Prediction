@@ -161,6 +161,11 @@ for idx, match in df.iterrows():
     df.at[idx, 'elo_away'] = elo_away
     df.at[idx, 'elo_diff'] = elo_home - elo_away
 
+    Match.objects.filter(match_id=match['match_id']).update(
+        elo_home=elo_home,
+        elo_away=elo_away
+    )
+
     elo_ratings[heim] = new_elo_home
     elo_ratings[auswaerts] = new_elo_away
 
@@ -359,3 +364,4 @@ importance_dict = {
 
 with open(os.path.join(static_dir, "xgb_feature_importance.json"), "w") as f:
     json.dump(importance_dict, f)
+

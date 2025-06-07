@@ -5,6 +5,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import json
+from django.db.models import F
 
 def football_prediction(request):
     return render(request, 'homepage.html')
