@@ -6,7 +6,7 @@ import xgboost as xgb
 from sklearn.calibration import CalibratedClassifierCV
 
 
-# CSV laden
+# CSV laden (Data Lake noch einbauen)
 df = pd.read_csv('C:\\Dev\\Anwendungsprojekt_clean\\football_prediction\\data\\bundesliga_gesamt_2020_2024.csv')
 df['date'] = pd.to_datetime(df['date'])
 
@@ -47,7 +47,6 @@ df['elo_home'] = 1500.0
 df['elo_away'] = 1500.0
 df['elo_diff'] = 0.0
 
-# Tabellenplatz-Features initialisieren
 df['home_position'] = 0
 df['away_position'] = 0
 df['average_home_goals'] = 0.0
@@ -127,7 +126,6 @@ for idx, match in df.iterrows():
             df.at[idx, 'average_away_goals'] = 1.0
             df.at[idx, 'away_win_rate'] = 0.3
 
-    # --- NEU: Elo-Rating ---
     elo_home = elo_ratings.get(heim, 1500)
     elo_away = elo_ratings.get(auswaerts, 1500)
 
@@ -174,7 +172,6 @@ df['away_form_goaldiff'] = df.groupby('away_team')['away_goal_diff'].transform(l
 df['home_form_curve'] = df.groupby('home_team')['home_points'].transform(lambda x: x.shift().rolling(5, min_periods=1).sum())
 df['away_form_curve'] = df.groupby('away_team')['away_points'].transform(lambda x: x.shift().rolling(5, min_periods=1).sum())
 
-# ➕ Neues Feature: Formdifferenz (z. B. Tordifferenzform Heim - Auswärts)
 df['form_diff'] = df['home_form_goaldiff'] - df['away_form_goaldiff']
 
 df['goal_avg_diff'] = df['average_home_goals'] - df['average_away_goals']
@@ -223,11 +220,9 @@ X = df[[
 
 y = df['result']
 
-# Zielvariable kodieren
 le_result = LabelEncoder()
 y_encoded = le_result.fit_transform(y)
 
-# Daten aufteilen
 X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
 # # Modell trainieren
@@ -261,11 +256,9 @@ from sklearn.metrics import brier_score_loss
 import numpy as np
 from sklearn.preprocessing import label_binarize
 
-# Klassen binarisieren
 n_classes = len(le_result.classes_)
 y_test_binarized = label_binarize(y_test, classes=list(range(n_classes)))
 
-# Multiclass Brier Score (durchschnittlich über alle Klassen)
 brier = np.mean(np.sum((y_proba - y_test_binarized) ** 2, axis=1))
 print(f"Brier Score (multiclass): {brier:.4f}")
 
