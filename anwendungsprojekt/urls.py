@@ -19,9 +19,11 @@ from django.urls import path
 from football_prediction.views import team_selection_view
 from django.urls import path
 from football_prediction import views
+from django.urls import path, include
 
 urlpatterns = [
     path('', views.football_prediction, name='home'),
+    path('admin/', admin.site.urls),
     path('overview/', views.model_overview, name='overview'),
     path('prediction/', views.team_selection_view, name='team_selection'),  # ← Name ergänzt
 ]

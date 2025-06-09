@@ -16,14 +16,3 @@ class Match(models.Model):
 
     def __str__(self):
         return f"{self.date.date()} {self.home_team} vs {self.away_team}"
-
-class MatchWithAvgHomeGoals(models.Model):
-    match_id = models.BigIntegerField(primary_key=True)
-    date = models.DateTimeField()
-    home_team = models.CharField(max_length=100)
-    home_goals = models.IntegerField()
-    average_home_goals = models.FloatField()
-
-    class Meta:
-        managed = False
-        db_table = 'football_prediction_match_avg_home_goals'

@@ -1,22 +1,34 @@
+import os
+import sys
+
+# Projektverzeichnis zum Python-Pfad hinzufügen
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, BASE_DIR)
+
+# Django-Settings korrekt setzen
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "anwendungsprojekt.settings")
+
+import django
+django.setup()
+
+# Danach erst Django-Importe
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import xgboost as xgb
 from sklearn.calibration import CalibratedClassifierCV
-import django
-import os
-import sys
 import joblib
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Django-Settings aktivieren
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "anwendungsprojekt.settings")
-
-import django
-django.setup()
+from football_prediction.models_views import (
+    MatchWithAvgHomeGoals,
+    MatchWithAvgAwayGoals,
+    MatchWithHomeWinRate,
+    MatchWithAwayWinRate
+)
 from football_prediction.models import Match
+
+
 
 # Alle Matches aus der Datenbank abrufen
 qs = Match.objects.all().values()
@@ -24,6 +36,41 @@ df = pd.DataFrame.from_records(qs)
 
 # Optional: Datum konvertieren
 df['date'] = pd.to_datetime(df['date'])
+
+# Match-ID als Index setzen für Joins
+df.set_index('match_id', inplace=True)
+
+# View-Daten aus der Datenbank laden
+avg_home = pd.DataFrame.from_records(MatchWithAvgHomeGoals.objects.all().values()).set_index('match_id')
+avg_away = pd.DataFrame.from_records(MatchWithAvgAwayGoals.objects.all().values()).set_index('match_id')
+win_home = pd.DataFrame.from_records(MatchWithHomeWinRate.objects.all().values()).set_index('match_id')
+win_away = pd.DataFrame.from_records(MatchWithAwayWinRate.objects.all().values()).set_index('match_id')
+
+# Nur die berechneten Spalten anhängen
+df = df.join(avg_home[['average_home_goals']])
+df = df.join(avg_away[['average_away_goals']])
+df = df.join(win_home[['home_win_rate']])
+df = df.join(win_away[['away_win_rate']])
+
+# Index zurücksetzen auf normale DataFrame-Struktur
+df = df.reset_index()
+# Konvertiere alle relevanten View-Spalten zu float
+df['average_home_goals'] = pd.to_numeric(df['average_home_goals'], errors='coerce')
+df['average_away_goals'] = pd.to_numeric(df['average_away_goals'], errors='coerce')
+df['home_win_rate'] = pd.to_numeric(df['home_win_rate'], errors='coerce')
+df['away_win_rate'] = pd.to_numeric(df['away_win_rate'], errors='coerce')
+
+# Optionales kombiniertes Feature (falls verwendet)
+df['goal_avg_diff'] = df['average_home_goals'] - df['average_away_goals']
+df['goal_avg_diff'] = pd.to_numeric(df['goal_avg_diff'], errors='coerce')
+
+# Fehlende Werte (NaNs) auffüllen, damit XGBoost nicht crasht
+df[['average_home_goals', 'average_away_goals']] = df[['average_home_goals', 'average_away_goals']].fillna(1.5)
+df[['home_win_rate', 'away_win_rate']] = df[['home_win_rate', 'away_win_rate']].fillna(0.4)
+df['goal_avg_diff'] = df['goal_avg_diff'].fillna(0.0)
+
+print(df[['average_home_goals', 'average_away_goals', 'goal_avg_diff']].dtypes)
+
 
 print(df.head())
 print(f"⚽ Anzahl geladener Spiele: {len(df)}")
@@ -68,10 +115,10 @@ df['elo_diff'] = 0.0
 
 df['home_position'] = 0
 df['away_position'] = 0
-df['average_home_goals'] = 0.0
-df['average_away_goals'] = 0.0
-df['home_win_rate'] = 0.0
-df['away_win_rate'] = 0.0
+# df['average_home_goals'] = 0.0
+# df['average_away_goals'] = 0.0
+# df['home_win_rate'] = 0.0
+# df['away_win_rate'] = 0.0
 
 elo_ratings = {}
 
@@ -119,31 +166,31 @@ for idx, match in df.iterrows():
         df.at[idx, 'home_position'] = 0
         df.at[idx, 'away_position'] = 0
 
-    prev_home = df[(df['season'] == saison) & (df['home_team'] == heim) & (df['date'] < spiel_datum)]
-    if len(prev_home) > 0:
-        df.at[idx, 'average_home_goals'] = prev_home['home_goals'].mean()
-        df.at[idx, 'home_win_rate'] = (prev_home['result'] == 'home_win').mean()
-    else:
-        saison_bisher = df[(df['season'] == saison) & (df['date'] < spiel_datum)]
-        if len(saison_bisher) > 0:
-            df.at[idx, 'average_home_goals'] = saison_bisher['home_goals'].mean()
-            df.at[idx, 'home_win_rate'] = (saison_bisher['result'] == 'home_win').mean()
-        else:
-            df.at[idx, 'average_home_goals'] = 1.5
-            df.at[idx, 'home_win_rate'] = 0.4
+    # prev_home = df[(df['season'] == saison) & (df['home_team'] == heim) & (df['date'] < spiel_datum)]
+    # if len(prev_home) > 0:
+    #     df.at[idx, 'average_home_goals'] = prev_home['home_goals'].mean()
+    #     df.at[idx, 'home_win_rate'] = (prev_home['result'] == 'home_win').mean()
+    # else:
+    #     saison_bisher = df[(df['season'] == saison) & (df['date'] < spiel_datum)]
+    #     if len(saison_bisher) > 0:
+    #         df.at[idx, 'average_home_goals'] = saison_bisher['home_goals'].mean()
+    #         df.at[idx, 'home_win_rate'] = (saison_bisher['result'] == 'home_win').mean()
+    #     else:
+    #         df.at[idx, 'average_home_goals'] = 1.5
+    #         df.at[idx, 'home_win_rate'] = 0.4
 
-    prev_away = df[(df['season'] == saison) & (df['away_team'] == auswaerts) & (df['date'] < spiel_datum)]
-    if len(prev_away) > 0:
-        df.at[idx, 'average_away_goals'] = prev_away['away_goals'].mean()
-        df.at[idx, 'away_win_rate'] = (prev_away['result'] == 'away_win').mean()
-    else:
-        saison_bisher = df[(df['season'] == saison) & (df['date'] < spiel_datum)]
-        if len(saison_bisher) > 0:
-            df.at[idx, 'average_away_goals'] = saison_bisher['away_goals'].mean()
-            df.at[idx, 'away_win_rate'] = (saison_bisher['result'] == 'away_win').mean()
-        else:
-            df.at[idx, 'average_away_goals'] = 1.0
-            df.at[idx, 'away_win_rate'] = 0.3
+    # prev_away = df[(df['season'] == saison) & (df['away_team'] == auswaerts) & (df['date'] < spiel_datum)]
+    # if len(prev_away) > 0:
+    #     df.at[idx, 'average_away_goals'] = prev_away['away_goals'].mean()
+    #     df.at[idx, 'away_win_rate'] = (prev_away['result'] == 'away_win').mean()
+    # else:
+    #     saison_bisher = df[(df['season'] == saison) & (df['date'] < spiel_datum)]
+    #     if len(saison_bisher) > 0:
+    #         df.at[idx, 'average_away_goals'] = saison_bisher['away_goals'].mean()
+    #         df.at[idx, 'away_win_rate'] = (saison_bisher['result'] == 'away_win').mean()
+    #     else:
+    #         df.at[idx, 'average_away_goals'] = 1.0
+    #         df.at[idx, 'away_win_rate'] = 0.3
 
     elo_home = elo_ratings.get(heim, 1500)
     elo_away = elo_ratings.get(auswaerts, 1500)

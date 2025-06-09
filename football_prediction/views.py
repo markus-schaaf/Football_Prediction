@@ -54,15 +54,7 @@ def get_goal_avg(team_name, home=True):
         goals = matches.values_list('away_goals', flat=True)
     return np.mean(goals) if goals else 1.0
 
-def get_win_rate(team_name, home=True):
-    if home:
-        matches = Match.objects.filter(home_team=team_name)
-        wins = matches.filter(home_goals__gt=F('away_goals')).count()
-    else:
-        matches = Match.objects.filter(away_team=team_name)
-        wins = matches.filter(away_goals__gt=F('home_goals')).count()
-    total = matches.count()
-    return wins / total if total > 0 else 0.0
+
 
 def team_selection_view(request):
     if Match.objects.exists():
@@ -142,3 +134,15 @@ def team_selection_view(request):
         'teams': all_teams,
         'prediction_result': prediction_result
     })
+
+
+def get_win_rate(team_name, home=True):
+    if home:
+        matches = Match.objects.filter(home_team=team_name)
+        wins = matches.filter(home_goals__gt=F('away_goals')).count()
+    else:
+        matches = Match.objects.filter(away_team=team_name)
+        wins = matches.filter(away_goals__gt=F('home_goals')).count()
+    total = matches.count()
+    return wins / total if total > 0 else 0.0
+
