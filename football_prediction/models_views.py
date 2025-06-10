@@ -46,3 +46,13 @@ class MatchWithAwayWinRate(models.Model):
     class Meta:
         managed = False
         db_table = 'football_prediction_match_away_win_rate'
+
+class MatchWithGoalAvgDiff(models.Model):
+    match_id = models.IntegerField(primary_key=True)
+    average_home_goals = models.FloatField()
+    average_away_goals = models.FloatField()
+    goal_avg_diff = models.FloatField()
+
+    class Meta:
+        managed = False
+        db_table = 'football_prediction_matchwithgoalavgdiff'

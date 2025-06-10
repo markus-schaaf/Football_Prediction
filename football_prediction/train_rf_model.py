@@ -1,3 +1,4 @@
+from django.db.models import OuterRef, Subquery
 import pandas as pd
 import numpy as np
 import os
@@ -12,18 +13,32 @@ import json
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Django-Settings aktivieren
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "anwendungsprojekt.settings")
 
 import django
 django.setup()
+
 from football_prediction.models import Match
 
+from django.db.models import F
 
-# Daten aus der Datenbank laden
-qs = Match.objects.all().values()
-df = pd.DataFrame.from_records(qs)
+qs = Match.objects.all()
+df = pd.DataFrame.from_records(qs.values(
+    "match_id", "date", "matchday", "home_team", "away_team", "home_goals", "away_goals", "scorers", "season", "result",
+    "elo_home", "elo_away"
+))
+
+
+# Durchschnittliche Tore berechnen
+df["average_home_goals"] = df.groupby("home_team")["home_goals"].transform("mean")
+df["average_away_goals"] = df.groupby("away_team")["away_goals"].transform("mean")
+
+# Gewinnraten berechnen
+df["home_win_rate"] = df.groupby("home_team")["result"].transform(lambda x: (x == "home_win").mean())
+df["away_win_rate"] = df.groupby("away_team")["result"].transform(lambda x: (x == "away_win").mean())
+
+# Zusätzliche Feature (falls nötig)
+df["goal_avg_diff"] = df["average_home_goals"] - df["average_away_goals"]
 
 # Datum konvertieren
 df['date'] = pd.to_datetime(df['date'])
@@ -63,16 +78,7 @@ def update_elo(rating_a, rating_b, result, k=20):
     new_rating_b = rating_b + k * ((1 - result) - (1 - expected_a))
     return new_rating_a, new_rating_b
 
-df['elo_home'] = 1500.0
-df['elo_away'] = 1500.0
-df['elo_diff'] = 0.0
 
-df['home_position'] = 0
-df['away_position'] = 0
-df['average_home_goals'] = 0.0
-df['average_away_goals'] = 0.0
-df['home_win_rate'] = 0.0
-df['away_win_rate'] = 0.0
 
 elo_ratings = {}
 
@@ -164,6 +170,8 @@ for idx, match in df.iterrows():
     elo_ratings[heim] = new_elo_home
     elo_ratings[auswaerts] = new_elo_away
 
+
+
 # Zusätzliche Form-Features
 df['home_points'] = df['result'].map({'home_win': 3, 'draw': 1, 'away_win': 0})
 df['away_points'] = df['result'].map({'away_win': 3, 'draw': 1, 'home_win': 0})
@@ -205,6 +213,8 @@ X = df[[
     'elo_home', 'elo_away', 'elo_diff',
 ]]
 
+X = X.astype(float)
+
 model_dir = os.path.join("football_prediction", "model")
 static_dir = os.path.join("football_prediction", "static", "model")
 os.makedirs(model_dir, exist_ok=True)
@@ -220,25 +230,27 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 rf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42)
 rf.fit(X_train, y_train)
 
-calibrated_rf = CalibratedClassifierCV(rf, cv=3, method='isotonic')
-calibrated_rf.fit(X_train, y_train)
+calibrated_model = CalibratedClassifierCV(rf, cv=3, method='isotonic')
+calibrated_model.fit(X_train, y_train)
 
-y_pred = calibrated_rf.predict(X_test)
+
+
+y_pred = calibrated_model.predict(X_test)
 print(f"Genauigkeit (kalibriertes Modell): {accuracy_score(y_test, y_pred):.2%}")
 
-y_proba = calibrated_rf.predict_proba(X_test)
+y_proba = calibrated_model.predict_proba(X_test)
 y_test_binarized = label_binarize(y_test, classes=list(range(len(le_result.classes_))))
 brier = np.mean(np.sum((y_proba - y_test_binarized) ** 2, axis=1))
 print(f"Brier Score (multiclass): {brier:.4f}")
 
+# Cross-Validation
 scores = cross_val_score(rf, X, y, cv=5, scoring='accuracy')
 print(f"Durchschnittliche Genauigkeit (Cross-Validation, 5-fach): {scores.mean():.2%}")
 print(f"Genauigkeit pro Fold: {scores}")
 print(f"Spannweite: {scores.min():.2%} – {scores.max():.2%}")
 print(f"Standardabweichung: {scores.std():.2%}")
 
-
-joblib.dump(calibrated_rf, os.path.join(model_dir, "random_forest_model.joblib"))
+joblib.dump(calibrated_model, os.path.join(model_dir, "random_forest_model.joblib"))
 joblib.dump(le_home, os.path.join(model_dir, "le_home.joblib"))
 joblib.dump(le_away, os.path.join(model_dir, "le_away.joblib"))
 joblib.dump(le_result, os.path.join(model_dir, "le_result.joblib"))
