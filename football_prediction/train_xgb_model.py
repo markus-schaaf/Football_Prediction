@@ -322,7 +322,7 @@ calibrated_model.fit(X_train, y_train)
 y_pred = calibrated_model.predict(X_test)
 
 class_names = le_result.classes_
-evaluate_model(y_test, y_pred, class_names=class_names)
+#evaluate_model(y_test, y_pred, class_names=class_names)
 
 accuracy = accuracy_score(y_test, y_pred)
 print(f"Genauigkeit (kalibriertes Modell): {accuracy:.2%}")
