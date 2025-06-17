@@ -19,6 +19,8 @@ from sklearn.metrics import accuracy_score
 import xgboost as xgb
 from sklearn.calibration import CalibratedClassifierCV
 import joblib
+from evaluation import evaluate_and_save
+
 
 from football_prediction.models_views import (
     MatchWithAvgHomeGoals,
@@ -318,12 +320,20 @@ calibrated_model = CalibratedClassifierCV(base_model, cv="prefit", method='isoto
 calibrated_model.fit(X_train, y_train)
 # Vorhersage und Bewertung
 y_pred = calibrated_model.predict(X_test)
+
+class_names = le_result.classes_
+evaluate_model(y_test, y_pred, class_names=class_names)
+
 accuracy = accuracy_score(y_test, y_pred)
 print(f"Genauigkeit (kalibriertes Modell): {accuracy:.2%}")
 
+from evaluation import evaluate_and_save
+
+eval_path = "football_prediction/static/model/xgb_eval.json"
+evaluate_and_save(y_test, y_pred, "XGBoost", class_names, eval_path)
+
 # Wahrscheinlichkeiten & Brier-Score
 y_proba = calibrated_model.predict_proba(X_test)
-from sklearn.metrics import brier_score_loss
 import numpy as np
 from sklearn.preprocessing import label_binarize
 
