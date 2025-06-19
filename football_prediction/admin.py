@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Match
+from .models import Match, MatchPrediction
 
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
@@ -29,3 +30,10 @@ class MatchWithAvgAwayGoalsAdmin(admin.ModelAdmin):
 @admin.register(MatchWithAwayWinRate)
 class MatchWithAwayWinRateAdmin(admin.ModelAdmin):
     list_display = ('match_id', 'away_team', 'away_goals', 'away_win_rate')
+
+
+@admin.register(MatchPrediction)
+class MatchPredictionAdmin(admin.ModelAdmin):
+    list_display = ('match', 'model_name', 'predicted_result', 'prob_home_win', 'prob_draw', 'prob_away_win', 'timestamp')
+    list_filter = ('model_name', 'predicted_result')
+    search_fields = ('match__home_team', 'match__away_team')
