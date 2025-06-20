@@ -7,6 +7,41 @@ import pandas as pd
 import json
 from django.db.models import F
 
+from django.db.models import F
+from football_prediction.models import Match
+from football_prediction.models_views import MatchWithModels
+
+def dashboard_view(request):
+    # 1. Gesamtzahl der Spiele
+    total_matches = Match.objects.count()
+
+    # 2. Aktuelle (neueste) Saison
+    latest_match = Match.objects.order_by('-season').first()
+    season = latest_match.season if latest_match else "Keine Daten"
+
+    # 3. Berechne Accuracy RF und XGB
+    matches_with_preds = MatchWithModels.objects.filter(season=season)
+    total_pred_matches = matches_with_preds.count()
+
+    if total_pred_matches > 0:
+        correct_rf = matches_with_preds.filter(result=F('predicted_rf_result')).count()
+        correct_xgb = matches_with_preds.filter(result=F('predicted_xgb_result')).count()
+
+        acc_rf = f"{round(correct_rf / total_pred_matches * 100, 1)}%"
+        acc_xgb = f"{round(correct_xgb / total_pred_matches * 100, 1)}%"
+    else:
+        acc_rf = acc_xgb = "Keine Daten"
+
+    context = {
+        'total_matches': total_matches,
+        'season': season,
+        'acc_rf': acc_rf,
+        'acc_xgb': acc_xgb,
+    }
+    return render(request, 'dashboard.html', context)
+
+
+
 def football_prediction(request):
     return render(request, 'homepage.html')
 
@@ -145,4 +180,3 @@ def get_win_rate(team_name, home=True):
         wins = matches.filter(away_goals__gt=F('home_goals')).count()
     total = matches.count()
     return wins / total if total > 0 else 0.0
-

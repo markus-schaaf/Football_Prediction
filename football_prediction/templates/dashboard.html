@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundesliga Prognose Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .kpi-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">Bundesliga Prognose Dashboard</h1>
+
+        <!-- KPIs -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <h4>Spiele Gesamt</h4>
+                    <p id="total-matches">{{ total_matches }}</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <h4>Accuracy RF</h4>
+                    <p id="acc-rf">{{ acc_rf }}</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <h4>Accuracy XGB</h4>
+                    <p id="acc-xgb">{{ acc_xgb }}</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <h4>Aktive Saison</h4>
+                    <p id="season">{{ season }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="vergleich-tab" data-bs-toggle="tab" data-bs-target="#vergleich" type="button" role="tab">Modellvergleich</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="visuals-tab" data-bs-toggle="tab" data-bs-target="#visuals" type="button" role="tab">Visualisierung</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="explain-tab" data-bs-toggle="tab" data-bs-target="#explain" type="button" role="tab">Erklärbarkeit</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="predict-tab" data-bs-toggle="tab" data-bs-target="#predict" type="button" role="tab">Live Prognose</button>
+            </li>
+        </ul>
+
+        <div class="tab-content mt-3">
+            <!-- Modellvergleich -->
+            <div class="tab-pane fade show active" id="vergleich" role="tabpanel">
+                <h3 class="section-title">Vorhersagevergleich RF vs. XGB</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Spiel</th>
+                            <th>RF Prognose</th>
+                            <th>XGB Prognose</th>
+                            <th>Ergebnis</th>
+                            <th>Abweichung</th>
+                        </tr>
+                    </thead>
+                    <tbody id="compare-table">
+                        <!-- Daten werden dynamisch eingefügt -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Visualisierung -->
+            <div class="tab-pane fade" id="visuals" role="tabpanel">
+                <h3 class="section-title">Modellvisualisierungen</h3>
+                <div id="charts-container">
+                    <!-- Hier kommen Grafiken rein (z.B. via Plotly) -->
+                </div>
+            </div>
+
+            <!-- Erklärbarkeit -->
+            <div class="tab-pane fade" id="explain" role="tabpanel">
+                <h3 class="section-title">Feature Importances</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Random Forest</h5>
+                        <div id="feature-rf"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>XGBoost</h5>
+                        <div id="feature-xgb"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Prognose -->
+            <div class="tab-pane fade" id="predict" role="tabpanel">
+                <h3 class="section-title">Prognose erstellen</h3>
+                <form id="predict-form">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="home-team" class="form-label">Heimteam</label>
+                            <input type="text" class="form-control" id="home-team">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="away-team" class="form-label">Auswärtsteam</label>
+                            <input type="text" class="form-control" id="away-team">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Prognose berechnen</button>
+                </form>
+                <div id="prediction-result" class="mt-4">
+                    <!-- Ergebnisse hier anzeigen -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
