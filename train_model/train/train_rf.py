@@ -22,7 +22,7 @@ def main():
     df = load_match_data()
     df = prepare_features(df)
 
-    X, y, encoders = encode_features(df, FEATURE_COLUMNS, TARGET_COLUMN)
+    X, y, encoders = encode_features(df, FEATURE_COLUMNS, target_column="result")
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -42,3 +42,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+import joblib
+
+def load_model():
+    model_path = os.path.join(MODEL_DIR, "rf_model.joblib")
+    return joblib.load(model_path)

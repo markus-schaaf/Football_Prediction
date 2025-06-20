@@ -16,3 +16,24 @@ class Match(models.Model):
 
     def __str__(self):
         return f"{self.date.date()} {self.home_team} vs {self.away_team}"
+
+from django.db.models import UniqueConstraint
+
+class MatchPrediction(models.Model):
+    match = models.ForeignKey('Match', on_delete=models.CASCADE, null=True, blank=True)
+    model_name = models.CharField(max_length=50)
+
+    prob_home_win = models.FloatField()
+    prob_draw = models.FloatField()
+    prob_away_win = models.FloatField()
+
+    predicted_result = models.CharField(max_length=10)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=['match', 'model_name'], name='unique_prediction_per_model')
+        ]
+
+    def __str__(self):
+        return f"{self.model_name} prediction – {self.predicted_result}"
