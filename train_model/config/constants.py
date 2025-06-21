@@ -12,5 +12,4 @@ FEATURE_COLUMNS = [
 
 TARGET_COLUMN = 'result'
 
-# Klassennamen in gleicher Reihenfolge wie das LabelEncoder-Fitting
 CLASS_NAMES = ['away_win', 'draw', 'home_win']
