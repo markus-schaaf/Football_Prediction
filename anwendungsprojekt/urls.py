@@ -26,4 +26,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('overview/', views.model_overview, name='overview'),
     path('prediction/', views.team_selection_view, name='team_selection'),  # ← Name ergänzt
+    path('dashboard/', views.dashboard_view, name='dashboard'),
 ]
