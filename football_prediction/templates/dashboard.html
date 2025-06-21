@@ -85,7 +85,17 @@
                         </tr>
                     </thead>
                     <tbody id="compare-table">
-                        <!-- Daten werden dynamisch eingefügt -->
+                        {% for eintrag in vergleichsdaten %}
+                            <tr>
+                                <td>{{ eintrag.spiel }}</td>
+                                <td>{{ eintrag.rf }}</td>
+                                <td>{{ eintrag.xgb }}</td>
+                                <td>{{ eintrag.ergebnis }}</td>
+                                <td>{{ eintrag.abweichung }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5">Keine Vorhersagen vorhanden.</td></tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -93,10 +103,24 @@
             <!-- Visualisierung -->
             <div class="tab-pane fade" id="visuals" role="tabpanel">
                 <h3 class="section-title">Modellvisualisierungen</h3>
-                <div id="charts-container">
-                    <!-- Hier kommen Grafiken rein (z.B. via Plotly) -->
-                </div>
+                <div id="charts-container" class="row">
+                    <!-- Genauigkeit pro Spieltag -->
+                    <div class="col-md-12 mb-4">
+                        <div id="accuracy-chart"></div>
+                    </div>
+                  
+                    <!-- Vorhersagetypen (Balkendiagramm) -->
+                    <div class="col-md-6 mb-4">
+                      <div id="prediction-type-chart"></div>
+                    </div>
+                  
+                    <!-- Unsicherheit (Boxplot) -->
+                    <div class="col-md-6 mb-4">
+                      <div id="confidence-chart"></div>
+                    </div>
+                </div>                  
             </div>
+
 
             <!-- Erklärbarkeit -->
             <div class="tab-pane fade" id="explain" role="tabpanel">
@@ -136,6 +160,149 @@
         </div>
     </div>
 
+
+    <!-- Fürs schlaten der Tabs-->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Für die Visualisierungen-->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+        // 1. Genauigkeit pro Spieltag
+        const accuracyChartData = JSON.parse('{{ accuracy_chart_data|safe }}');
+        const matchdays = accuracyChartData.labels;
+        const rfAcc = accuracyChartData.rf;
+        const xgbAcc = accuracyChartData.xgb;
+    
+        Plotly.newPlot('accuracy-chart', [
+            {
+                x: matchdays,
+                y: rfAcc,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Random Forest',
+                line: { color: '#7fc97f' } //hellgrün
+            },
+            {
+                x: matchdays,
+                y: xgbAcc,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'XGBoost',
+                line: { color: '#80b1d3' } //hellblau
+            }
+        ], {
+            title: 'Modellgenauigkeit pro Spieltag',
+            xaxis: { title: 'Spieltag' },
+            yaxis: { title: 'Genauigkeit (%)', range: [0, 100] },
+            width: window.innerWidth * 0.9,
+            height: 500
+        });
+    
+        // 2. Vorhersagetypen (Balkendiagramm)
+        const predictionTypeData = JSON.parse('{{ prediction_type_data|safe }}');
+        const actualResults = JSON.parse('{{ visual_data_json|safe }}');
+    
+        const categories = ["Heimsieg", "Unentschieden", "Auswärtssieg"];
+        const rfCounts = [
+            predictionTypeData.RandomForest.home_win || 0,
+            predictionTypeData.RandomForest.draw || 0,
+            predictionTypeData.RandomForest.away_win || 0
+        ];
+        const xgbCounts = [
+            predictionTypeData.XGBoost.home_win || 0,
+            predictionTypeData.XGBoost.draw || 0,
+            predictionTypeData.XGBoost.away_win || 0
+        ];
+        const actualCounts = actualResults.counts;
+    
+        const trace1 = {
+            x: categories,
+            y: rfCounts,
+            name: 'Random Forest',
+            type: 'bar',
+            marker: { color: '#7fc97f' } //hellgrün
+        };
+    
+        const trace2 = {
+            x: categories,
+            y: actualCounts,
+            name: 'Tatsächlich',
+            type: 'bar',
+            marker: { color: '#d9d9d9' } //hellgrau
+        };
+    
+        const trace3 = {
+            x: categories,
+            y: xgbCounts,
+            name: 'XGBoost',
+            type: 'bar',
+            marker: { color: '#80b1d3' } //hellblau
+        };
+    
+        const layout1 = {
+            title: 'Verteilung der Vorhersagetypen',
+            yaxis: { title: 'Anzahl der Vorhersagen' },
+            barmode: 'group'
+        };
+    
+        Plotly.newPlot('prediction-type-chart', [trace1, trace2, trace3], layout1);
+    
+        // 3. Unsicherheit (Boxplot)
+        const confidenceData = JSON.parse('{{ confidence_data|safe }}');
+    
+        const trace4 = {
+            y: confidenceData.RandomForest,
+            type: 'box',
+            name: 'Random Forest',
+            marker: { color: '#7fc97f' }, //hellgrün
+            boxpoints: 'outliers'
+        };
+    
+        const trace5 = {
+            y: confidenceData.XGBoost,
+            type: 'box',
+            name: 'XGBoost',
+            marker: { color: '#80b1d3' }, //hellblau
+            boxpoints: 'outliers'
+        };
+    
+        const layout2 = {
+            title: 'Verteilung der Unsicherheit (maximale Wahrscheinlichkeit)',
+            yaxis: { title: 'Confidence Score' }
+        };
+    
+        Plotly.newPlot('confidence-chart', [trace4, trace5], layout2);
+    </script>
+
+    <!-- Script für Erklärbarkeits tab-->
+    <script>
+        const rfImp = JSON.parse('{{ rf_feature_importances|safe }}');
+        const xgbImp = JSON.parse('{{ xgb_feature_importances|safe }}');
+    
+        function plotFeatureImportance(data, targetId, title, color) {
+            const top = data.slice(0, 10);  // Top 10
+            const features = top.map(d => d[0]);
+            const values = top.map(d => d[1]);
+    
+            Plotly.newPlot(targetId, [{
+                x: values.reverse(),
+                y: features.reverse(),
+                type: 'bar',
+                orientation: 'h',
+                marker: { color: color }
+            }], {
+                title: title,
+                margin: { l: 120 },
+                xaxis: { title: 'Importance' }
+            });
+        }
+    
+        plotFeatureImportance(rfImp, 'feature-rf', 'Random Forest Feature Importance', 'lightgreen');
+        plotFeatureImportance(xgbImp, 'feature-xgb', 'XGBoost Feature Importance', 'lightblue');
+    </script>
+    
+    
+
+
 </body>
 </html>

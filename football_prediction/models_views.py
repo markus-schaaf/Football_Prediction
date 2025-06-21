@@ -1,17 +1,5 @@
 from django.db import models
 
-class MatchWithModels(models.Model):
-    match_id = models.CharField(max_length=50, primary_key=True)
-    result = models.CharField(max_length=10)
-    predicted_rf_result = models.CharField(max_length=10)
-    predicted_xgb_result = models.CharField(max_length=10)
-    season = models.CharField(max_length=20)
-
-    class Meta:
-        managed = False
-        db_table = 'match_with_models'  # Du brauchst eine gleichnamige View
-
-
 class MatchWithAvgHomeGoals(models.Model):
     match_id = models.BigIntegerField(primary_key=True)
     date = models.DateTimeField()
