@@ -10,6 +10,9 @@ from collections import Counter
 from collections import defaultdict
 from django.core.serializers.json import DjangoJSONEncoder
 import os
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.shortcuts import redirect
 
 
 # allgemeine view für dashboard
@@ -135,7 +138,7 @@ def dashboard_view(request):
     }
 
 
-    # Unsicherheit = höchste Wahrscheinlichkeit der Vorhersage
+    # Unter Unsicherheit = höchste Wahrscheinlichkeit des Vorhersageergebnisses
     def extract_confidences(preds):
         return [
             max(p.prob_home_win, p.prob_draw, p.prob_away_win)
@@ -147,6 +150,10 @@ def dashboard_view(request):
         "XGBoost": extract_confidences(xgb_preds),
     }
 
+
+    # tab - Live Prognose - Teams für Dropdowns
+    teams = Match.objects.values_list('home_team', flat=True).distinct()
+    teams = sorted(set(teams))  # optional alphabetisch sortieren
 
 
     context = {
@@ -160,6 +167,7 @@ def dashboard_view(request):
         'prediction_type_data': json.dumps(prediction_type_data),
         'actual_type_data': json.dumps(actual_type_data),
         'confidence_data': json.dumps(confidence_data),
+        'teams': teams,
     }
 
     # Inhalt für Erklärbakeit-Tab
@@ -216,6 +224,166 @@ def get_feature_importances():
 
 
 
+
+from django.http import JsonResponse
+import joblib
+import json
+import pandas as pd
+import os
+from football_prediction.models import Match
+from django.template.loader import render_to_string
+
+
+def predict_match_view(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            home_team = data.get("home_team")
+            away_team = data.get("away_team")
+            user_tip = data.get("user_tip")
+
+            if not home_team or not away_team:
+                return JsonResponse({"error": "Teams fehlen."}, status=400)
+
+            # Feature-Definitionen
+            feature_path = os.path.join("train_model", "football_prediction", "model", "feature_columns.json")
+            with open(feature_path, 'r') as f:
+                feature_columns = json.load(f)
+
+            # Dummywerte für Merkmalsberechnung – hier später deine Funktionen integrieren
+            elo_team1 = 1500
+            elo_team2 = 1400
+            form_team1 = 3
+            form_team2 = 1
+            avg_goals_home = 1.7
+            avg_goals_away = 1.2
+            win_rate_home = 0.5
+            win_rate_away = 0.4
+
+            input_data = pd.DataFrame([{
+                'elo_diff': elo_team1 - elo_team2,
+                'form_diff': form_team1 - form_team2,
+                'goal_avg_diff': avg_goals_home - avg_goals_away,
+                'form_curve_diff': form_team1 - form_team2,
+                'home_position': 6,
+                'away_position': 10,
+                'average_home_goals': avg_goals_home,
+                'average_away_goals': avg_goals_away,
+                'home_win_rate': win_rate_home,
+                'away_win_rate': win_rate_away
+            }])
+
+            # Fehlende Spalten auffüllen
+            for col in feature_columns:
+                if col not in input_data.columns:
+                    input_data[col] = 0
+            input_data = input_data[feature_columns]
+
+            # Modelle laden
+            rf_model_path = os.path.join("train_model", "football_prediction", "model", "rf_model.joblib")
+            xgb_model_path = os.path.join("train_model", "football_prediction", "model", "xgb_model.joblib")
+            rf_model = joblib.load(rf_model_path)
+            xgb_model = joblib.load(xgb_model_path)
+
+            # Vorhersagen berechnen
+            rf_probs = rf_model.predict_proba(input_data)[0]
+            xgb_probs = xgb_model.predict_proba(input_data)[0]
+
+            result = {
+                "rf": {
+                    "home_win": f"{rf_probs[0]*100:.2f}%",
+                    "draw": f"{rf_probs[1]*100:.2f}%",
+                    "away_win": f"{rf_probs[2]*100:.2f}%"
+                },
+                "xgb": {
+                    "home_win": f"{xgb_probs[0]*100:.2f}%",
+                    "draw": f"{xgb_probs[1]*100:.2f}%",
+                    "away_win": f"{xgb_probs[2]*100:.2f}%"
+                }
+            }
+            html = render_to_string("partials/prediction_result.html", {
+                "prediction": {
+                    "user_guess_verbose": user_tip,
+                    "home_team": home_team,
+                    "away_team": away_team,
+                    "rf_result": rf_probs,
+                    "xgb_result": xgb_probs,
+                    "actual_result": None,
+                    "rf_last3_ok": True,
+                    "rf_home_last3_ok": True,
+                    "rf_away_last3_ok": False,
+                    "top_features": ["elo_diff", "form_diff", "goal_avg_diff"]
+                }
+            })
+            return JsonResponse({"html": html})
+
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return JsonResponse({"error": "Ungültige Methode."}, status=405)
+
+
+
+### überflüssig wegen neuer view?
+@require_http_methods(["POST"])
+@csrf_exempt
+def live_prediction_view(request):
+    home = request.POST.get("home_team")
+    away = request.POST.get("away_team")
+    user_guess = request.POST.get("user_guess")
+
+    # Models laden (du kannst deine bestehende Ladefunktion nutzen)
+    rf_model = joblib.load("train_model/football_prediction/model/random_forest_model.pkl")
+    xgb_model = joblib.load("train_model/football_prediction/model/xgb_model.pkl")
+    features = load_match_features(home, away)
+
+    rf_pred = rf_model.predict([features])[0]
+    xgb_pred = xgb_model.predict([features])[0]
+
+    rf_correct = check_model_last_n("RandomForest", 3)
+    rf_home_correct = check_model_last_n("RandomForest", 3, home)
+    rf_away_correct = check_model_last_n("RandomForest", 3, away)
+
+    top_features = get_top_features(xgb_model, n=3)
+
+    request.session['prediction'] = {
+        'user_guess': user_guess,
+        'user_guess_verbose': map_result(user_guess),
+        'rf_result': map_result(rf_pred),
+        'xgb_result': map_result(xgb_pred),
+        'rf_last3_ok': "✅" if rf_correct else "❌",
+        'rf_home_last3_ok': "✅" if rf_home_correct else "❌",
+        'rf_away_last3_ok': "✅" if rf_away_correct else "❌",
+        'top_features': top_features,
+        # Optional: tatsächliches Ergebnis hinzufügen, falls verfügbar
+        'actual_result': None
+    }
+
+    return redirect('dashboard')  # dashboard.html zeigt prediction aus session
+
+
+def check_model_last_n(model_name, n=3, team=None):
+    qs = MatchPrediction.objects.filter(model_name=model_name).order_by('-match__date')
+    if team:
+        qs = qs.filter(match__home_team=team) | qs.filter(match__away_team=team)
+    qs = qs[:n]
+    correct = sum(1 for p in qs if p.predicted_result == p.match.result)
+    return correct == n
+
+def map_result(code):
+    return {
+        "home_win": "Heimsieg",
+        "draw": "Unentschieden",
+        "away_win": "Auswärtssieg"
+    }.get(code, "k.A.")
+
+def get_top_features(model, n=3):
+    import numpy as np
+    fi = model.feature_importances_
+    feature_names = model.feature_names_in_
+    sorted_idx = np.argsort(fi)[::-1]
+    return list(feature_names[sorted_idx[:n]])
 
 
 

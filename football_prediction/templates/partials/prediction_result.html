@@ -1,0 +1,36 @@
+<div class="card p-3 shadow-sm">
+    <h5>🏆 Deine Live-Prognose</h5>
+    <p><strong>{{ prediction.home_team }}</strong> vs. <strong>{{ prediction.away_team }}</strong></p>
+
+    <ul class="list-group mb-3">
+        <li class="list-group-item">
+            🔍 <strong>Random Forest:</strong>
+            Heimsieg: {{ prediction.rf_result.0|floatformat:2 }}% |
+            Unentschieden: {{ prediction.rf_result.1|floatformat:2 }}% |
+            Auswärtssieg: {{ prediction.rf_result.2|floatformat:2 }}%
+        </li>
+        <li class="list-group-item">
+            🔍 <strong>XGBoost:</strong>
+            Heimsieg: {{ prediction.xgb_result.0|floatformat:2 }}% |
+            Unentschieden: {{ prediction.xgb_result.1|floatformat:2 }}% |
+            Auswärtssieg: {{ prediction.xgb_result.2|floatformat:2 }}%
+        </li>
+    </ul>
+
+    {% if prediction.actual_result %}
+    <p><strong>Tatsächliches Ergebnis:</strong> {{ prediction.actual_result }}</p>
+    {% endif %}
+
+    <h6>Modell-Erklärungen</h6>
+    <ul>
+        <li>Letzte 3 RF-Prognosen richtig? → {{ prediction.rf_last3_ok }}</li>
+        <li>Letzte 3 RF-Heimteam-Prognosen richtig? → {{ prediction.rf_home_last3_ok }}</li>
+        <li>Letzte 3 RF-Auswärtsteam-Prognosen richtig? → {{ prediction.rf_away_last3_ok }}</li>
+        <li>Top 3 wichtigste Features (XGBoost): {{ prediction.top_features|join:", " }}</li>
+    </ul>
+
+    <p class="text-muted mt-2">
+        Die angezeigten Wahrscheinlichkeiten beziehen sich auf das jeweils sicherste Modellurteil.<br>
+        Die tatsächlichen Spielergebnisse werden angezeigt, sobald das Spiel stattgefunden hat.
+    </p>
+</div>

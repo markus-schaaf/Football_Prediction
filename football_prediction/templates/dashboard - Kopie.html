@@ -188,7 +188,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                         <label for="home-team" class="form-label">Heimteam</label>
-                        <select class="form-control" id="home-team" name="team1" required>
+                        <select class="form-control" id="home-team" required>
                             <option value="" disabled selected>Team wählen</option>
                             {% for team in teams %}
                             <option value="{{ team }}">{{ team }}</option>
@@ -197,7 +197,7 @@
                         </div>
                         <div class="col-md-6">
                         <label for="away-team" class="form-label">Auswärtsteam</label>
-                        <select class="form-control" id="away-team" name="team2" required>
+                        <select class="form-control" id="away-team" required>
                             <option value="" disabled selected>Team wählen</option>
                             {% for team in teams %}
                             <option value="{{ team }}">{{ team }}</option>
