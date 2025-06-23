@@ -1,6 +1,5 @@
 import os
 
-# Optional: alle Dateien zählen, die typische Code-Erweiterungen haben
 EXTENSIONS = ('.py', '.html', '.js', '.css', '.json', '.txt', '.md', '.xml')
 
 def count_all_words(directory):
@@ -19,7 +18,6 @@ def count_all_words(directory):
                     print(f"Fehler bei Datei {file}: {e}")
     return word_count, file_count
 
-# Ergebnis anzeigen
 words, files = count_all_words('.')
 print(f"Gesamtwörter (inkl. venv & libs): {words:,}")
 print(f"Dateien gezählt: {files}")

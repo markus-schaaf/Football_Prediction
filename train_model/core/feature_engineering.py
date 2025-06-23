@@ -59,7 +59,6 @@ def add_form_stats(df):
     df["away_form_points"] = 0
     df["home_form_goaldiff"] = 0
     df["away_form_goaldiff"] = 0
-    # Optional: historisch letzte 3–5 Spiele analysieren – kann nachgerüstet werden
     return df
 
 def add_form_diffs(df):
@@ -82,5 +81,5 @@ def prepare_features(df):
     df = add_win_rates(df)
     df = add_form_stats(df)
     df = add_form_diffs(df)
-    df = add_goal_avg_diff(df)  # <–– Hier ergänzt
+    df = add_goal_avg_diff(df)
     return df

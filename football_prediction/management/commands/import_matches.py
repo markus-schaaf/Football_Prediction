@@ -8,19 +8,15 @@ class Command(BaseCommand):
     help = 'Importiert Match-Daten aus Parquet-Datei'
 
     def handle(self, *args, **kwargs):
-        # Basisverzeichnis berechnen (Projektverzeichnis)
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         file_path = os.path.join(base_dir, 'data_lake', 'processed', 'matches_cleaned.parquet')
 
-        # Daten laden
         df = pd.read_parquet(file_path)
 
-        # Aktuelle Django-Zeitzone holen
         tz = timezone.get_current_timezone()
 
         count = 0
         for _, row in df.iterrows():
-            # Datumsfeld timezone-aware machen
             aware_date = row['date'].replace(tzinfo=tz)
 
             match, created = Match.objects.update_or_create(
@@ -35,11 +31,11 @@ class Command(BaseCommand):
                 'scorers': row['scorers'],
                 'season': row['season'],
                 'result': row['result'],
-                'elo_home': row.get('elo_home', None),  # 👈 hinzugefügt
-                'elo_away': row.get('elo_away', None),  # 👈 hinzugefügt
+                'elo_home': row.get('elo_home', None),  
+                'elo_away': row.get('elo_away', None), 
             }
         )
             if created:
                 count += 1
 
-        self.stdout.write(self.style.SUCCESS(f'✅ {count} Matches erfolgreich importiert.'))
+        self.stdout.write(self.style.SUCCESS(f' {count} Matches erfolgreich importiert.'))

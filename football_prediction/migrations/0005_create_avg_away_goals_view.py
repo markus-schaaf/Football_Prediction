@@ -1,7 +1,7 @@
 import os
 from django.db import migrations
 
-# Funktion zum robusten Einlesen der SQL-Datei
+
 def read_sql(filename):
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     sql_path = os.path.join(base_dir, 'football_prediction', 'sql_views', filename)

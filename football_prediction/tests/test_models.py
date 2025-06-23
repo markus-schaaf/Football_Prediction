@@ -1,5 +1,3 @@
-# football_prediction/tests/test_models.py
-
 from django.test import TestCase
 from football_prediction.models import Match
 
