@@ -325,45 +325,6 @@ def predict_match_view(request):
     return JsonResponse({"error": "Ungültige Methode."}, status=405)
 
 
-
-### überflüssig wegen neuer view?
-@require_http_methods(["POST"])
-@csrf_exempt
-def live_prediction_view(request):
-    home = request.POST.get("home_team")
-    away = request.POST.get("away_team")
-    user_guess = request.POST.get("user_guess")
-
-    # Models laden (du kannst deine bestehende Ladefunktion nutzen)
-    rf_model = joblib.load("train_model/football_prediction/model/random_forest_model.pkl")
-    xgb_model = joblib.load("train_model/football_prediction/model/xgb_model.pkl")
-    features = load_match_features(home, away)
-
-    rf_pred = rf_model.predict([features])[0]
-    xgb_pred = xgb_model.predict([features])[0]
-
-    rf_correct = check_model_last_n("RandomForest", 3)
-    rf_home_correct = check_model_last_n("RandomForest", 3, home)
-    rf_away_correct = check_model_last_n("RandomForest", 3, away)
-
-    top_features = get_top_features(xgb_model, n=3)
-
-    request.session['prediction'] = {
-        'user_guess': user_guess,
-        'user_guess_verbose': map_result(user_guess),
-        'rf_result': map_result(rf_pred),
-        'xgb_result': map_result(xgb_pred),
-        'rf_last3_ok': "✅" if rf_correct else "❌",
-        'rf_home_last3_ok': "✅" if rf_home_correct else "❌",
-        'rf_away_last3_ok': "✅" if rf_away_correct else "❌",
-        'top_features': top_features,
-        # Optional: tatsächliches Ergebnis hinzufügen, falls verfügbar
-        'actual_result': None
-    }
-
-    return redirect('dashboard')  # dashboard.html zeigt prediction aus session
-
-
 def check_model_last_n(model_name, n=3, team=None):
     qs = MatchPrediction.objects.filter(model_name=model_name).order_by('-match__date')
     if team:
