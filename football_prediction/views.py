@@ -13,6 +13,7 @@ import os
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import redirect
+from django.conf import settings
 
 
 # allgemeine view für dashboard
@@ -203,7 +204,7 @@ def calculate_model_accuracy(model_name, season):
 
 # berechnet die Importances für Erklärbakeitstab
 def get_feature_importances():
-    model_dir = r'C:\Users\gillo\Anwendungsprojekt\Football_Prediction\train_model\football_prediction\model'
+    model_dir = os.path.join(settings.BASE_DIR, 'train_model', 'football_prediction', 'model')
     # Feature-Namen laden
     with open(os.path.join(model_dir, 'feature_columns.json'), 'r') as f:
         feature_names = json.load(f)
